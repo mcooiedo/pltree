@@ -532,66 +532,71 @@ namespace plt {
                      return ret1?OpStatus::Find:OpStatus::NotFound;
                  };
              }*/
-        void rebuildBlockMeta(int idx, uint8_t version, blockMeta *bm) {
+  void rebuildBlockMeta(int idx1, uint8_t version, blockMeta *bm1) {
             uint8_t kvPerBlock = (BLOCK_SIZE - sizeof(BlockHeader)) / sizeof(KV);
             uint8_t num = 0;
-            auto ptr = blocks[idx].head.ptr;
-            bm->setLayerPtr(ptr);
-            bm->v = version;
-            for (uint8_t i = 0; i < kvPerBlock; ++i) {
-                if (blocks[idx].kv[i].first != FREE) {
-                    uint8_t fp = hashcode1B<KeyType>(blocks[idx].kv[i].first);
-                    bm->fps[i] = fp;
-                    bm->num++;
-                    //blocks[idx].head.num++;
-                } else {
-                    break;
+            auto bm=metas;
+            for(int idx=0;idx<blockNum;idx++){
+                auto ptr = blocks[idx].head.ptr;
+                bm[idx].setLayerPtr(ptr);
+                bm[idx].v = version;
+                for (uint8_t i = 0; i < kvPerBlock; ++i) {
+                    if (blocks[idx].kv[i].first != FREE) {
+                        uint8_t fp = hashcode1B<KeyType>(blocks[idx].kv[i].first);
+                        bm[idx].fps[i] = fp;
+                        bm[idx].num++;
+                        //blocks[idx].head.num++;
+                    } else {
+                        break;
+                    }
                 }
-            }
-            EntryFp *lastFPEntrys = NULL;
-            auto layer = reinterpret_cast< DirType *> (ptr);
-            int level = 0;
-            while (layer) {
-                auto entrys = layer->entrys;
-                auto metas = layer->metas;
-                size_t size = 1 << (INIT_ENTRY_BIT + FANOUT * level);
-                my_alloc::allocMem(layer->FPEntrys, (int) size);
-
-                for (int i = 0; i < size; ++i) {
-                    layer->FPEntrys[i].entryPtr = reinterpret_cast<uintptr_t>(&entrys[i]);
-                    int count = 0;
-                    bool breakFlag = false;
-                    for (int j = 0; j < BUCKET_PER_ENTRY; ++j) {
-                        auto bucket = entrys[i].buckets + j;
-                        auto fp_bucket = layer->FPEntrys[i].fps + j * BUCKET_LEN;
-                        for (int k = 0; k < BUCKET_LEN; ++k) {
-                            if (bucket->kvs[k].first != FREE) {
-                                uint8_t fp = hashcode1B<KeyType>(bucket->kvs[k].first);
-                                fp_bucket[k] = fp;
-                                ++count;
+                EntryFp *lastFPEntrys = NULL;
+                auto layer = reinterpret_cast< DirType *> (ptr);
+                int level = 0;
+                while (layer) {
+                    auto entrys = layer->entrys;
+                    auto metas = layer->metas;
+                    size_t size = 1 << (INIT_ENTRY_BIT + FANOUT * level);
+                    my_alloc::allocMem(layer->FPEntrys, (int) size);
+                   // my_alloc::statistic.dramcost+=sizeof(EntryFp)*size/1024.0/1024/1024.0;
+                    for (int i = 0; i < size; ++i) {
+                        layer->FPEntrys[i].entryPtr = reinterpret_cast<uintptr_t>(&entrys[i]);
+                        int count = 0;
+                        bool breakFlag = false;
+                        for (int j = 0; j < BUCKET_PER_ENTRY; ++j) {
+                            auto bucket = entrys[i].buckets + j;
+                            auto fp_bucket = layer->FPEntrys[i].fps + j * BUCKET_LEN;
+                            for (int k = 0; k < BUCKET_LEN; ++k) {
+                                if (bucket->kvs[k].first != FREE) {
+                                    uint8_t fp = hashcode1B<KeyType>(bucket->kvs[k].first);
+                                    fp_bucket[k] = fp;
+                                    ++count;
+                                }
+                                if (count == metas[i].size) {
+                                    breakFlag = true;
+                                    break;
+                                }
                             }
-                            if (count == metas[i].size) {
-                                breakFlag = true;
+                            if (breakFlag) {
                                 break;
                             }
                         }
-                        if (breakFlag) {
-                            break;
+                    }
+                    if (level == 0) {
+                        bm[idx].setFPtr(reinterpret_cast<uint64_t>(layer->FPEntrys));
+                    } else if (level > 0 && lastFPEntrys != NULL) {
+                        int lastSize = 1 << (INIT_ENTRY_BIT + FANOUT * (level - 1));
+                        for (int i = 0; i < lastSize; ++i) {
+                            lastFPEntrys[i].nextLevel = layer->FPEntrys;
                         }
-                    }
-                }
-                if (level == 0) {
-                    bm->setFPtr(reinterpret_cast<uint64_t>(layer->FPEntrys));
-                } else if (level > 0 && lastFPEntrys != NULL) {
-                    int lastSize = 1 << (INIT_ENTRY_BIT + FANOUT * (level - 1));
-                    for (int i = 0; i < lastSize; ++i) {
-                        lastFPEntrys[i].nextLevel = layer->FPEntrys;
-                    }
 
+                    }
+                    lastFPEntrys = layer->FPEntrys;
+                    layer = layer->nextlevel;
+                    level++;
                 }
-                lastFPEntrys = layer->FPEntrys;
-                layer = layer->nextlevel;
             }
+
         }
 
         OpStatus
