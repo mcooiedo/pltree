@@ -1226,6 +1226,10 @@ namespace plt {
             }
             slot->setBufferPtr(reinterpret_cast<uint64_t>(metas));
             while (begin != kvs.end()) {
+                if(begin->second==DELETED){
+                    begin++;
+                    continue;
+                }
                 int idx = predict_block(begin->first, blockNum);
                 auto block = blocks + idx;
                 auto blockHead = &block->head;
