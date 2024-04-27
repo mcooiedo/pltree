@@ -57,6 +57,7 @@ namespace plt {
             return first == other.first ;
         }
     };
+    //entry中键的指纹结构
     struct __attribute__((aligned(64))) EntryFp {
         uint8_t fps[BUCKET_PER_ENTRY * BUCKET_LEN];
        // uintptr_t size:16;
@@ -66,6 +67,7 @@ namespace plt {
             memset(fps, 0, BUCKET_PER_ENTRY * BUCKET_LEN);
         }
     };
+    //block头部结构
     struct BlockHeader {
         uint64_t ptr;
         uint8_t v;
@@ -124,6 +126,7 @@ namespace plt {
         }
 
     };
+    //与block对应的指元数据结构
     struct __attribute__((aligned(32))) blockMeta{
     public:
         uint8_t v;
@@ -273,6 +276,7 @@ namespace plt {
     };
     template<typename KeyType>
     std::vector<std::pair<KeyType*,int>>  treeLayout;
+   //内部节点槽位结构
     template<typename KeyType>
     class innerSlot{
     public:
@@ -376,6 +380,7 @@ namespace plt {
 
 
     };
+    //内部节点结构
     template<typename KeyType>
     class innerNode{
     public:
@@ -407,7 +412,7 @@ namespace plt {
            return &slots[idx];
         }*/
     };
-
+    //block结构
     template<typename KeyType, typename ValueType>
     struct __attribute__((aligned(256))) Block{
         typedef  struct KV<KeyType,ValueType> KV;
