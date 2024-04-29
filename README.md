@@ -10,10 +10,15 @@ pltree-ff,将溢出缓存替换为fast&fair
 
 
 # 编译
+
 mkdir build
+
 cd build
+
 cmake ..
+
 make -j 14
+
 # 运行
 运行时执行命令：sudo sh test.sh
 test.sh中参数说明：
